@@ -44,6 +44,11 @@ type API interface {
 	Close() error
 }
 
+type Config struct {
+	JSONCredentials []byte
+	Endpoint        string
+}
+
 // Client wraps a GCP logging client to fetch logs, and a resourcemanager client
 // to list projects
 type Client struct {
@@ -51,15 +56,22 @@ type Client struct {
 	rClient *resourcemanager.ProjectsService
 }
 
-// NewClient creates a new Client using jsonCreds for authentication
-func NewClient(ctx context.Context, jsonCreds []byte, endpoint string) (*Client, error) {
-	client, err := logging.NewClient(ctx, option.WithCredentialsJSON(jsonCreds),
-		option.WithUserAgent("googlecloud-logging-datasource"), option.WithEndpoint(endpoint))
+// NewClient creates a new Client
+func NewClient(ctx context.Context, config Config) (*Client, error) {
+	options := []option.ClientOption{
+		option.WithEndpoint(config.Endpoint),
+		option.WithUserAgent("googlecloud-logging-datasource"),
+	}
+
+	if config.JSONCredentials != nil {
+		options = append(options, option.WithCredentialsJSON(config.JSONCredentials))
+	}
+
+	client, err := logging.NewClient(ctx, options...)
 	if err != nil {
 		return nil, err
 	}
-	rClient, err := resourcemanager.NewService(ctx, option.WithCredentialsJSON(jsonCreds),
-		option.WithUserAgent("googlecloud-logging-datasource"))
+	rClient, err := resourcemanager.NewService(ctx, options...)
 	if err != nil {
 		return nil, err
 	}

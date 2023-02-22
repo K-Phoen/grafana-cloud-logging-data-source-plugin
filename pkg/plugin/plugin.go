@@ -28,6 +28,7 @@ import (
 	"github.com/grafana/grafana-plugin-sdk-go/backend/instancemgmt"
 	"github.com/grafana/grafana-plugin-sdk-go/backend/log"
 	"github.com/grafana/grafana-plugin-sdk-go/data"
+	"golang.org/x/oauth2/google"
 )
 
 // Make sure CloudLoggingDatasource implements required interfaces
@@ -39,7 +40,8 @@ var (
 )
 
 const (
-	privateKeyKey = "privateKey"
+	privateKeyKey     = "privateKey"
+	jwtAuthentication = "jwt"
 )
 
 // config is the fields parsed from the front end
@@ -74,22 +76,30 @@ type serviceAccountJSON struct {
 
 // NewCloudLoggingDatasource creates a new datasource instance.
 func NewCloudLoggingDatasource(settings backend.DataSourceInstanceSettings) (instancemgmt.Instance, error) {
-	var conf config
-	if err := json.Unmarshal(settings.JSONData, &conf); err != nil {
-		return nil, fmt.Errorf("unmarshal: %w", err)
-	}
-
-	privateKey, ok := settings.DecryptedSecureJSONData[privateKeyKey]
-	if !ok || privateKey == "" {
-		return nil, errMissingCredentials
-	}
-
-	serviceAccount, err := conf.toServiceAccountJSON(privateKey)
+	conf, err := unmarshalConfigFromSettings(settings)
 	if err != nil {
-		return nil, fmt.Errorf("create credentials: %w", err)
+		return "", fmt.Errorf("unmarshal: %w", err)
 	}
 
-	client, err := cloudlogging.NewClient(context.TODO(), serviceAccount, conf.Endpoint)
+	clientConfig := cloudlogging.Config{
+		Endpoint: conf.Endpoint,
+	}
+
+	if conf.AuthType == jwtAuthentication {
+		privateKey, ok := settings.DecryptedSecureJSONData[privateKeyKey]
+		if !ok || privateKey == "" {
+			return nil, errMissingCredentials
+		}
+
+		serviceAccount, err := conf.toServiceAccountJSON(privateKey)
+		if err != nil {
+			return nil, fmt.Errorf("create credentials: %w", err)
+		}
+
+		clientConfig.JSONCredentials = serviceAccount
+	}
+
+	client, err := cloudlogging.NewClient(context.TODO(), clientConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -246,15 +256,15 @@ func (d *CloudLoggingDatasource) query(ctx context.Context, pCtx backend.PluginC
 func (d *CloudLoggingDatasource) CheckHealth(ctx context.Context, req *backend.CheckHealthRequest) (*backend.CheckHealthResult, error) {
 	// log.DefaultLogger.Info("CheckHealth called")
 
-	var status = backend.HealthStatusOk
-	settings := req.PluginContext.DataSourceInstanceSettings
-
-	var conf config
-	if err := json.Unmarshal(settings.JSONData, &conf); err != nil {
-		return nil, fmt.Errorf("unmarshal: %w", err)
+	defaultProject, err := defaultProjectFromSettings(ctx, *req.PluginContext.DataSourceInstanceSettings)
+	if err != nil {
+		return &backend.CheckHealthResult{
+			Status:  backend.HealthStatusError,
+			Message: fmt.Sprintf("failed to infer default project: %s", err),
+		}, nil
 	}
 
-	if err := d.client.TestConnection(ctx, conf.DefaultProject); err != nil {
+	if err := d.client.TestConnection(ctx, defaultProject); err != nil {
 		return &backend.CheckHealthResult{
 			Status:  backend.HealthStatusError,
 			Message: fmt.Sprintf("failed to run test query: %s", err),
@@ -262,7 +272,45 @@ func (d *CloudLoggingDatasource) CheckHealth(ctx context.Context, req *backend.C
 	}
 
 	return &backend.CheckHealthResult{
-		Status:  status,
-		Message: fmt.Sprintf("Successfully queried logs from GCP project %s", conf.DefaultProject),
+		Status:  backend.HealthStatusOk,
+		Message: fmt.Sprintf("Successfully queried logs from GCP project %s", defaultProject),
 	}, nil
+}
+
+func defaultProjectFromSettings(ctx context.Context, settings backend.DataSourceInstanceSettings) (string, error) {
+	conf, err := unmarshalConfigFromSettings(settings)
+	if err != nil {
+		return "", fmt.Errorf("unmarshal: %w", err)
+	}
+
+	if conf.DefaultProject != "" {
+		return conf.DefaultProject, nil
+	}
+
+	return GCEDefaultProject(ctx)
+}
+
+func unmarshalConfigFromSettings(settings backend.DataSourceInstanceSettings) (config, error) {
+	var conf config
+	if err := json.Unmarshal(settings.JSONData, &conf); err != nil {
+		return conf, fmt.Errorf("unmarshal: %w", err)
+	}
+
+	return conf, nil
+}
+
+func GCEDefaultProject(ctx context.Context) (string, error) {
+	defaultCredentials, err := google.FindDefaultCredentials(ctx, "https://www.googleapis.com/auth/logging.read")
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve default project from GCE metadata server: %w", err)
+	}
+	token, err := defaultCredentials.TokenSource.Token()
+	if err != nil {
+		return "", fmt.Errorf("failed to retrieve GCP credential token: %w", err)
+	}
+	if !token.Valid() {
+		return "", errors.New("failed to validate GCP credentials")
+	}
+
+	return defaultCredentials.ProjectID, nil
 }

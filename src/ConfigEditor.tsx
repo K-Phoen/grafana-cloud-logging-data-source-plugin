@@ -17,12 +17,17 @@
 import React from 'react';
 import { DataSourcePluginOptionsEditorProps, onUpdateDatasourceJsonDataOption } from '@grafana/data';
 import { DataSourceSecureJsonData, GoogleAuthType } from '@grafana/google-sdk';
-import { Field, FieldSet, Input } from '@grafana/ui';
+import { Field, FieldSet, Input, RadioButtonGroup } from '@grafana/ui';
 import { JWTConfigEditor } from './components/JWTConfigEditor';
 import { JWTForm } from './components/JWTForm';
 import { CloudLoggingOptions } from 'types';
 
 type Props = DataSourcePluginOptionsEditorProps<CloudLoggingOptions, DataSourceSecureJsonData>;
+
+const GOOGLE_AUTH_TYPE_OPTIONS = [
+  { label: 'Google JWT File', value: GoogleAuthType.JWT },
+  { label: 'GCE Default Service Account', value: GoogleAuthType.GCE },
+];
 
 /**
  * Config page that accepts a JWT token either through upload or pasting
@@ -32,8 +37,19 @@ type Props = DataSourcePluginOptionsEditorProps<CloudLoggingOptions, DataSourceS
 export const ConfigEditor: React.FC<Props> = (props: Props) => {
   const { options, onOptionsChange } = props;
   const { jsonData, secureJsonFields, secureJsonData } = options;
-  // We only accept a JWT token
-  jsonData.authenticationType = GoogleAuthType.JWT;
+
+  if (!jsonData.authenticationType) {
+    jsonData.authenticationType = GoogleAuthType.JWT;
+  }
+
+  const isJWT = jsonData.authenticationType === GoogleAuthType.JWT || jsonData.authenticationType === undefined;
+
+  const onAuthTypeChange = (authenticationType: GoogleAuthType) => {
+    onOptionsChange({
+      ...options,
+      jsonData: { ...options.jsonData, authenticationType },
+    });
+  };
 
   const hasJWTConfigured = Boolean(
     secureJsonFields &&
@@ -68,33 +84,59 @@ export const ConfigEditor: React.FC<Props> = (props: Props) => {
 
   return (
     <>
-      <FieldSet label="JWT Key Details">
-        {hasJWTConfigured ? (
-          <JWTForm options={options.jsonData} onReset={onResetJWTToken} onChange={onJWTFormChange} />
-        ) : (
-          <JWTConfigEditor
-            onChange={(jwt) => {
-              onOptionsChange({
-                ...options,
-                secureJsonFields: { ...secureJsonFields, privateKey: true },
-                secureJsonData: {
-                  ...secureJsonData,
-                  privateKey: jwt.privateKey,
-                },
-                jsonData: {
-                  ...jsonData,
-                  clientEmail: jwt.clientEmail,
-                  defaultProject: jwt.projectId,
-                  tokenUri: jwt.tokenUri,
-                },
-              });
-            }}
+      <FieldSet label="Authentication">
+        <Field label="Authentication type">
+          <RadioButtonGroup
+            options={GOOGLE_AUTH_TYPE_OPTIONS}
+            value={jsonData.authenticationType || GoogleAuthType.JWT}
+            onChange={onAuthTypeChange}
           />
-        )}{' '}
+        </Field>
       </FieldSet>
+
+      {!isJWT && (
+        <FieldSet label="Settings">
+          <Field label="Default Project ID">
+            {/* @ts-ignore */}
+            <Input
+              id="defaultProject"
+              width={60}
+              value={options.jsonData.defaultProject || ''}
+              onChange={onJWTFormChange('defaultProject')}
+            />
+          </Field>
+        </FieldSet>
+      )}
+
+      {isJWT && (
+        <FieldSet label="JWT Key Details">
+          {hasJWTConfigured ? (
+            <JWTForm options={options.jsonData} onReset={onResetJWTToken} onChange={onJWTFormChange} />
+          ) : (
+            <JWTConfigEditor
+              onChange={(jwt) => {
+                onOptionsChange({
+                  ...options,
+                  secureJsonFields: { ...secureJsonFields, privateKey: true },
+                  secureJsonData: {
+                    ...secureJsonData,
+                    privateKey: jwt.privateKey,
+                  },
+                  jsonData: {
+                    ...jsonData,
+                    clientEmail: jwt.clientEmail,
+                    defaultProject: jwt.projectId,
+                    tokenUri: jwt.tokenUri,
+                  },
+                });
+              }}
+            />
+          )}{' '}
+        </FieldSet>
+      )}
       <Field label="Cloud Logging Service Endpoint" description="Optional">
         <Input
-          id="endpoint" 
+          id="endpoint"
           value={options.jsonData.endpoint || ''}
           onChange={onJWTFormChange('endpoint')}
         />
