@@ -1,5 +1,18 @@
 # Google Cloud Logging Data Source
 
+⚠️ Disclaimer ⚠️
+
+This fork improves on the original data source in several ways:
+
+* it supports authenticating using the environments default credentials (useful when running in GCE or GKE, with Workload Identity)
+* it returns log entries in a way consistent with Cloud Logging
+* it supports variables in queries (see GoogleCloudPlatform/cloud-logging-data-source-plugin#18)
+* it can add/remove filters in the Explore page
+* it fixes a few small issues
+
+This repository is NOT meant to be used in production environment. Ideally, I would like to contribute these changes
+back to the upstream plugin.
+
 ## Overview
 The Google Cloud Logging Data Source is a backend data source plugin for Grafana,
 which allows users to query and visualize their Google Cloud logs in Grafana.
