@@ -49,7 +49,7 @@ func GetLogLabels(entry *loggingpb.LogEntry) data.Labels {
 		labels[k] = v
 	}
 
-	labels["id"] = entry.GetInsertId()
+	labels["insertId"] = entry.GetInsertId()
 	// This is how severity is set
 	labels["level"] = GetLogLevel(entry.GetSeverity())
 
@@ -66,7 +66,7 @@ func GetLogLabels(entry *loggingpb.LogEntry) data.Labels {
 		fields := t.JsonPayload.GetFields()
 		for k, v := range fields {
 			if strings.ToLower(k) != "message" {
-				fieldToLabels(labels, k, v)
+				fieldToLabels(labels, fmt.Sprintf("jsonPayload.%s", k), v)
 			}
 		}
 	}
