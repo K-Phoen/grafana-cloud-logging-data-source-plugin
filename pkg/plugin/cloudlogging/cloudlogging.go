@@ -52,6 +52,8 @@ func GetLogLabels(entry *loggingpb.LogEntry) data.Labels {
 	labels["insertId"] = entry.GetInsertId()
 	// This is how severity is set
 	labels["level"] = GetLogLevel(entry.GetSeverity())
+	// The resource name of the log to which this log entry belongs
+	labels["logName"] = entry.GetLogName()
 
 	resource := entry.GetResource()
 	if resourceType := resource.GetType(); resourceType != "" {

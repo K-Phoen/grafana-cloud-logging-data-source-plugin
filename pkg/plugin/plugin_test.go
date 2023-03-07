@@ -184,7 +184,7 @@ func TestQueryData_SingleLog(t *testing.T) {
 	require.Len(t, frame.Fields, 2)
 	require.Equal(t, data.VisTypeLogs, string(frame.Meta.PreferredVisualization))
 
-	expectedFrame := []byte(`{"schema":{"name":"b6f39be2-b298-44da-9001-1f04e5756fa0","meta":{"preferredVisualisationType":"logs"},"fields":[{"name":"time","type":"time","typeInfo":{"frame":"time.Time"}},{"name":"content","type":"string","typeInfo":{"frame":"string"},"labels":{"labels.custom_label":"custom_value","insertId":"b6f39be2-b298-44da-9001-1f04e5756fa0","labels.instance_id":"unique","level":"info","resource.type":"gce_instance"}}]},"data":{"values":[[1660920349373],["Full log message from this GCE instance"]]}}`)
+	expectedFrame := []byte(`{"schema":{"name":"b6f39be2-b298-44da-9001-1f04e5756fa0","meta":{"preferredVisualisationType":"logs"},"fields":[{"name":"time","type":"time","typeInfo":{"frame":"time.Time"}},{"name":"content","type":"string","typeInfo":{"frame":"string"},"labels":{"labels.custom_label":"custom_value","insertId":"b6f39be2-b298-44da-9001-1f04e5756fa0","logName":"organizations/1234567890/logs/cloudresourcemanager.googleapis.com%2Factivity","labels.instance_id":"unique","level":"info","resource.type":"gce_instance"}}]},"data":{"values":[[1660920349373],["Full log message from this GCE instance"]]}}`)
 
 	serializedFrame, err := frame.MarshalJSON()
 	require.NoError(t, err)

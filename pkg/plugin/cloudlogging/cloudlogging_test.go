@@ -220,6 +220,7 @@ func TestGetLogLabels(t *testing.T) {
 			expected: data.Labels{
 				"insertId": "insert-id",
 				"level":    "debug",
+				"logName":  "",
 			},
 		},
 		{
@@ -235,6 +236,7 @@ func TestGetLogLabels(t *testing.T) {
 			},
 			expected: data.Labels{
 				"insertId":                    "insert-id",
+				"logName":                     "",
 				"resource.labels.instance_id": "123456",
 				"resource.type":               "gce_instance",
 				"level":                       "debug",
@@ -244,6 +246,7 @@ func TestGetLogLabels(t *testing.T) {
 			name: "log labels and resource with labels",
 			entry: &loggingpb.LogEntry{
 				InsertId: "insert-id2",
+				LogName:  "projects/some-project-id/logs/k8s-stdout",
 				Labels: map[string]string{
 					"pid":            "111",
 					"LOG_BUCKET_NUM": "1",
@@ -257,6 +260,7 @@ func TestGetLogLabels(t *testing.T) {
 			},
 			expected: data.Labels{
 				"insertId":                    "insert-id2",
+				"logName":                     "projects/some-project-id/logs/k8s-stdout",
 				"labels.pid":                  "111",
 				"labels.LOG_BUCKET_NUM":       "1",
 				"resource.labels.instance_id": "98765",
@@ -273,6 +277,7 @@ func TestGetLogLabels(t *testing.T) {
 					"LOG_BUCKET_NUM": "1",
 				},
 				Severity: ltype.LogSeverity_ALERT,
+				LogName:  "projects/some-project-id/logs/k8s-stdout",
 				Payload: &loggingpb.LogEntry_JsonPayload{
 					JsonPayload: &structpb.Struct{
 						Fields: map[string]*structpb.Value{
@@ -300,6 +305,7 @@ func TestGetLogLabels(t *testing.T) {
 			},
 			expected: data.Labels{
 				"insertId": "insert-id4",
+				"logName":  "projects/some-project-id/logs/k8s-stdout",
 				"labels.logging.googleapis.com/instrumentation_source": "agent.googleapis.com/thirdparty",
 				"jsonPayload.tid":                     "222",
 				"jsonPayload.db":                      "database-experiencing-error",
