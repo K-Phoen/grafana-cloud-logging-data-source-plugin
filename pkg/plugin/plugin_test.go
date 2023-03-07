@@ -184,10 +184,10 @@ func TestQueryData_SingleLog(t *testing.T) {
 	require.Len(t, frame.Fields, 2)
 	require.Equal(t, data.VisTypeLogs, string(frame.Meta.PreferredVisualization))
 
-	expectedFrame := []byte(`{"schema":{"name":"b6f39be2-b298-44da-9001-1f04e5756fa0","meta":{"preferredVisualisationType":"logs"},"fields":[{"name":"time","type":"time","typeInfo":{"frame":"time.Time"}},{"name":"content","type":"string","typeInfo":{"frame":"string"},"labels":{"custom_label":"custom_value","insertId":"b6f39be2-b298-44da-9001-1f04e5756fa0","instance_id":"unique","level":"info","resource.type":"gce_instance"}}]},"data":{"values":[[1660920349373],["Full log message from this GCE instance"]]}}`)
+	expectedFrame := []byte(`{"schema":{"name":"b6f39be2-b298-44da-9001-1f04e5756fa0","meta":{"preferredVisualisationType":"logs"},"fields":[{"name":"time","type":"time","typeInfo":{"frame":"time.Time"}},{"name":"content","type":"string","typeInfo":{"frame":"string"},"labels":{"labels.custom_label":"custom_value","insertId":"b6f39be2-b298-44da-9001-1f04e5756fa0","labels.instance_id":"unique","level":"info","resource.type":"gce_instance"}}]},"data":{"values":[[1660920349373],["Full log message from this GCE instance"]]}}`)
 
 	serializedFrame, err := frame.MarshalJSON()
 	require.NoError(t, err)
-	require.Equal(t, string(expectedFrame), string(serializedFrame))
+	require.JSONEq(t, string(expectedFrame), string(serializedFrame))
 	client.AssertExpectations(t)
 }

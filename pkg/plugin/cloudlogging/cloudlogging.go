@@ -46,7 +46,7 @@ func GetLogEntryMessage(entry *loggingpb.LogEntry) (string, error) {
 func GetLogLabels(entry *loggingpb.LogEntry) data.Labels {
 	labels := make(data.Labels)
 	for k, v := range entry.GetLabels() {
-		labels[k] = v
+		labels[fmt.Sprintf("labels.%s", k)] = v
 	}
 
 	labels["insertId"] = entry.GetInsertId()
